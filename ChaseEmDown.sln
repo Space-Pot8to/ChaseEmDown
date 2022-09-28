@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32602.215
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChaseEmDown", "ChaseEmDown\ChaseEmDown.csproj", "{9F7C2B37-3DAA-469F-A926-E42289A43058}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9F7C2B37-3DAA-469F-A926-E42289A43058}.Debug|x64.ActiveCfg = Debug|x64
+		{9F7C2B37-3DAA-469F-A926-E42289A43058}.Debug|x64.Build.0 = Debug|x64
+		{9F7C2B37-3DAA-469F-A926-E42289A43058}.Release|x64.ActiveCfg = Release|x64
+		{9F7C2B37-3DAA-469F-A926-E42289A43058}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9FC1D7F1-C016-4B2F-AE69-E54DD84B4572}
+	EndGlobalSection
+EndGlobal
