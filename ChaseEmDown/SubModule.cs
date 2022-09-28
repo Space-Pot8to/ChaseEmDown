@@ -5,23 +5,28 @@ using System.Linq;
 
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.Conversation;
-using TaleWorlds.CampaignSystem.MapEvents;
 using TaleWorlds.CampaignSystem.Party;
 using TaleWorlds.Core;
 using TaleWorlds.Localization;
 using TaleWorlds.MountAndBlade;
-using MCM.Abstractions.Settings.Base.PerSave;
+using TaleWorlds.Library;
+
 using MCM.Abstractions.FluentBuilder;
 using MCM.Abstractions.FluentBuilder.Models;
 using MCM.Abstractions.Settings.Base.Global;
 using MCM.Abstractions.Ref;
-using TaleWorlds.Library;
+
 
 namespace ChaseEmDown
-{
+{   
+    /// <summary>
+    /// Simple idea. It's very annoying that when you are in an army of 1000, but chasing an army 
+    /// of 500, you can't send out a party to pin down the enemy until you arrive. The smaller 
+    /// army will usually be faster than you, so there's no way to bring them to battle.
+    /// </summary>
     public class SubModule : MBSubModuleBase
     {
-        private FluentGlobalSettings _globalSettings;
+        private FluentGlobalSettings? _globalSettings;
 
         protected override void OnSubModuleLoad()
         {
@@ -38,8 +43,10 @@ namespace ChaseEmDown
         protected override void OnBeforeInitialModuleScreenSetAsRoot()
         {
             base.OnBeforeInitialModuleScreenSetAsRoot();
+
+            #region MCM Settings
             ISettingsBuilder builder = BaseSettingsBuilder
-                .Create("ChaseEmDown", "Chase Em Down Configuration")
+                .Create("ChaseEmDown", new TextObject("{=GVppfCoKHi}Chase Em Down Configuration").ToString())
                 .SetFormat("xml")
                 .SetFolderName("ChaseEmDown")
                 .SetSubFolder("ChaseEmDown");
@@ -47,7 +54,11 @@ namespace ChaseEmDown
             {
                 if (Campaign.Current != null)
                 {
-                    InformationManager.DisplayMessage(new InformationMessage("Click", new Color(134, 114, 250)));
+                    SendAdvancedPartyCampaignBehavior.Instance.ResetAIsAndReturnToArmy();
+                }
+                else
+                {
+                    InformationManager.DisplayMessage(new InformationMessage("{=U3VavjmS86}No, really, you need to be in campaign for this to do anyting.", new Color(134, 114, 250)));
                 }
             };
             builder.CreateGroup("ChaseEmDown Settings",
@@ -64,12 +75,13 @@ namespace ChaseEmDown
                         ref1, "Test Button",
                         delegate (ISettingsPropertyButtonBuilder buttonBuilder)
                         {
-                            buttonBuilder.SetHintText("Resets the AI of ordered parties. Must be in a campaign.");
+                            buttonBuilder.SetHintText("{=v2BGSMibjm}Resets the AI of ordered parties. Must be in a campaign.");
                         });
                 }
             );
             _globalSettings = builder.BuildAsGlobal();
             _globalSettings.Register();
+            #endregion
         }
 
         protected override void InitializeGameStarter(Game game, IGameStarter gameStarterObject)
@@ -98,15 +110,27 @@ namespace ChaseEmDown
             Instance = this;
         }
 
+        public void ResetAIsAndReturnToArmy()
+        {
+            for(int i = 0; i < _advancedPartiesTargets.Count; i++)  
+            {
+                MobileParty party = _advancedPartiesTargets.ElementAt(i).Key;
+                party.Ai.EnableAi();
+                party.SetMoveEscortParty(MobileParty.MainParty);
+                party.Army = MobileParty.MainParty.Army;
+            }
+            _advancedPartiesTargets.Clear();
+        }
+
         public override void RegisterEvents()
         {
             CampaignEvents.OnSessionLaunchedEvent.AddNonSerializedListener(this, new Action<CampaignGameStarter>(this.OnSessionLaunched));
             CampaignEvents.OnNewGameCreatedEvent.AddNonSerializedListener(this, new Action<CampaignGameStarter>(this.OnNewGameCreated));
-            CampaignEvents.MapEventStarted.AddNonSerializedListener(this, new Action<MapEvent, PartyBase, PartyBase>(this.OnMapEventStarted));
-            CampaignEvents.MapEventEnded.AddNonSerializedListener(this, new Action<MapEvent>(this.OnMapEventEnded));
             CampaignEvents.OnPartyJoinedArmyEvent.AddNonSerializedListener(this, new Action<MobileParty>(this.OnPartyJoinArmyEvent));
             CampaignEvents.ArmyDispersed.AddNonSerializedListener(this, new Action<Army, Army.ArmyDispersionReason, bool>(this.OnArmyDispersed));
             CampaignEvents.HourlyTickPartyEvent.AddNonSerializedListener(this, new Action<MobileParty>(this.HourlyPartyTick));
+            CampaignEvents.MobilePartyDestroyed.AddNonSerializedListener(this, new Action<MobileParty, PartyBase>(this.OnMobilePartyDestroyed));
+            CampaignEvents.PartyAttachedAnotherParty.AddNonSerializedListener(this, new Action<MobileParty>(this.OnPartyAttachedAnotherParty));
         }
 
         public override void SyncData(IDataStore dataStore)
@@ -127,40 +151,31 @@ namespace ChaseEmDown
                 _advancedPartiesTargets = new Dictionary<MobileParty, AdvancedPartyTargeter>();
         }
 
-        private void OnMapEventStarted(MapEvent mapEvent, PartyBase partyBase1, PartyBase partyBase2)
+        private void OnMobilePartyDestroyed(MobileParty mobileParty, PartyBase partyBase)
         {
-
-        }
-
-        private void OnMapEventEnded(MapEvent mapEvent)
-        {
-            List<MobileParty> parties = mapEvent.InvolvedParties
-                                        .Where(x => x.IsMobile
-                                               && _advancedPartiesTargets.ContainsKey(x.MobileParty))
-                                        .Select(x => x.MobileParty).ToList();
-            if (MobileParty.MainParty.Army != null 
-                && MobileParty.MainParty.Army.LeaderParty == MobileParty.MainParty) 
+            // if mobileParty is an advanced party, then remove it from the dictionary
+            if (_advancedPartiesTargets.ContainsKey(mobileParty))
             {
-                // after an advanced party has finished its battle with the target party,
-                // its 
-                foreach (MobileParty party in parties)
-                {
-                    party.Ai.EnableAi();
-                    party.Army = MobileParty.MainParty.Army;
-                }
+                _advancedPartiesTargets.Remove(mobileParty);
+                return;
             }
-            else
+
+            // when the target party is destroyed for whatever reason, remove the advanced party that
+            // was sent to attack it and return it to the player's army
+            List<MobileParty> tracked = _advancedPartiesTargets
+                                        .Where(x => x.Value.TargetParty == mobileParty)
+                                        .Select(x => x.Key).ToList();
+
+            foreach(MobileParty party in tracked)
             {
-                foreach (MobileParty party in parties)
-                {
-                    party.Ai.EnableAi();
-                }
+                // party.Ai.EnableAi();
+                party.Army = MobileParty.MainParty.Army;
             }
         }
 
-        private void OnPartyJoinArmyEvent(MobileParty mobileParty)
+        private void OnPartyAttachedAnotherParty(MobileParty mobileParty)
         {
-            // when an advanced party rejoins the army, their ai is reset and they are no longer tracked
+            // when an advanced party re-attaches to the army, their ai is reset and they are no longer tracked
             if (_advancedPartiesTargets.ContainsKey(mobileParty))
             {
                 mobileParty.Ai.EnableAi();
@@ -168,14 +183,30 @@ namespace ChaseEmDown
             }
         }
 
+        private void OnPartyJoinArmyEvent(MobileParty mobileParty)
+        {
+            // when party "joins" the player's army, set them to go immediately to the army
+            if (_advancedPartiesTargets.ContainsKey(mobileParty))
+            {
+                mobileParty.SetMoveEscortParty(MobileParty.MainParty);
+                _advancedPartiesTargets[mobileParty] = new AdvancedPartyTargeter()
+                {
+                    Order = AdvancedPartyOrder.ReturnToArmy,
+                    TargetParty = MobileParty.MainParty
+                };
+            }
+        }
+
         private void OnArmyDispersed(Army army, Army.ArmyDispersionReason reason, bool isPlayersArmy)
         {
             // when the player's army is dispersed, any advanced parties have their ai reset
-            if (isPlayersArmy && _advancedPartiesTargets.Count > 0)
+            // and they are removed from the dictionary
+            if (army.LeaderParty == MobileParty.MainParty 
+                && _advancedPartiesTargets.Count > 0)
             {
-                foreach(KeyValuePair<MobileParty, AdvancedPartyTargeter> keyValuePair in _advancedPartiesTargets)
+                foreach (KeyValuePair<MobileParty, AdvancedPartyTargeter> kv in _advancedPartiesTargets)
                 {
-                    keyValuePair.Key.Ai.EnableAi();
+                    kv.Key.Ai.EnableAi();
                 }
                 _advancedPartiesTargets.Clear();
             }
@@ -187,11 +218,13 @@ namespace ChaseEmDown
             bool tracked = _advancedPartiesTargets.TryGetValue(mobileParty, out targetAndOrder);
             if (tracked)
             {
-                // if the advanced party goes out of sight, they return to the army
+                // if the advanced party goes out of sight, and they have been ordered to stay in
+                // sight they start to return to the army so remove them from the tracked parties
+                // as well
                 if (targetAndOrder.Order == AdvancedPartyOrder.ChaseWhileVisible
                    && !mobileParty.IsVisible)
                 {
-                    mobileParty.Ai.EnableAi();
+                    // mobileParty.Ai.EnableAi();
                     mobileParty.Army = MobileParty.MainParty.Army;
                 }
             }
@@ -227,11 +260,12 @@ namespace ChaseEmDown
 
             public void Initialize()
             {
+                #region Send Advanced Party Dialog
                 _starter.AddPlayerLine(
                 "hero_send_scout_party",
                 "hero_main_options",
                 "lord_advanced_party_response",
-                "I want you to attack and hold an enemy party until reinforcements can arrive.",
+                "{=QFUphXTfPi}I want you to attack and hold an enemy party until reinforcements can arrive.",
                 delegate ()
                 {
                     MobileParty mainParty = MobileParty.MainParty;
@@ -244,9 +278,12 @@ namespace ChaseEmDown
                           && x.IsLordParty).ToList();
 
                     return mainParty.Army != null // player is in army
+                        && mainParty.Army.LeaderParty == mainParty // player is leader of that army
                         && talkTo.PartyBelongedTo != null // talkTo has a party
                         && talkTo.PartyBelongedTo.LeaderHero == talkTo // talkTo is the leader of that party
                         && mainParty.Army.LeaderPartyAndAttachedParties.Contains(talkTo.PartyBelongedTo) // talkTo's party is in player's army
+                        && !SendAdvancedPartyCampaignBehavior.Instance
+                            .AdvancedPartiesTargets.ContainsKey(talkTo.PartyBelongedTo) // party is not already assigned to chase down another party
                         && _nearbyParties.Count > 0; // there are nearby enemy lord parties
                 },
                 delegate ()
@@ -261,16 +298,17 @@ namespace ChaseEmDown
                     {
                         MobileParty party = _nearbyParties[i];
                         string optionId = "player_pick_army_" + i;
+                        TextObject message = new TextObject("I want you to chase down {TARGET_PARTY}");
+                        message.SetTextVariable("TARGET_PARTY", _nearbyParties[i].Name);
                         ConversationSentence sentence = _starter.AddPlayerLine(
-                            optionId, 
+                            optionId,
                             "player_advanced_party_select_target",
                             "lord_chase_down_how_far",
-                            "I want you to chase down {TARGET_ARMY_" + i + "}", 
-                            new ConversationSentence.OnConditionDelegate(TargetPartyCondition), 
+                            message.ToString(),
+                            new ConversationSentence.OnConditionDelegate(TargetPartyCondition),
                             new ConversationSentence.OnConsequenceDelegate(TargetPartyConsequence), 200);
                         typeof(ConversationSentence).GetProperty("RelatedObject").SetValue(sentence, party, null);
                         _availableTargets.Add(sentence);
-                        MBTextManager.SetTextVariable("TARGET_ARMY_" + i, _nearbyParties[i].Name);
                     }
                 });
 
@@ -278,7 +316,7 @@ namespace ChaseEmDown
                     "lord_advanced_party_response_which_one", 
                     "lord_advanced_party_response", 
                     "player_advanced_party_select_target",
-                    "Very well. Which party would you like me to attack?",
+                    "{=RWVHqhyo69}Very well. Which party would you like me to attack?",
                     delegate ()
                     {
                         return _nearbyParties.Count > 0;
@@ -298,7 +336,7 @@ namespace ChaseEmDown
                     "lord_chase_down_how_far",
                     "lord_chase_down_how_far",
                     "player_set_lord_chase_option",
-                    "For how long should I chase the target?",
+                    "{=FDvkdXfW4Q}For how long should I chase the target?",
                     null,
                     delegate ()
                     {
@@ -309,7 +347,7 @@ namespace ChaseEmDown
                     "player_lord_chase_while_visible",
                     "player_set_lord_chase_option",
                     "lord_accept_chase_down",
-                    "Chase them until you are out of sight.",
+                    "{=iDLpYYNuHz}Chase them until you are out of sight. If you haven't caught them yet, return.",
                     null,
                     delegate ()
                     {
@@ -320,7 +358,7 @@ namespace ChaseEmDown
                     "player_lord_chase_always",
                     "player_set_lord_chase_option",
                     "lord_accept_chase_down",
-                    "Chase them to the ends of the earth.",
+                    "{=AW3imsxKDO}Chase them to the ends of the earth.",
                     null,
                     delegate ()
                     {
@@ -349,10 +387,15 @@ namespace ChaseEmDown
                         advancedParty.Ai.DisableAi();
                         advancedParty.SetMoveEngageParty(_targetParty);
                         SendAdvancedPartyCampaignBehavior.Instance.AdvancedPartiesTargets
-                        .Add(advancedParty, new AdvancedPartyTargeter() { Order = _order, TargetParty = _targetParty });
+                        .Add(advancedParty, new AdvancedPartyTargeter() 
+                        {
+                            Order = _order, 
+                            TargetParty = _targetParty 
+                        });
                         _targetParty = null;
                         _order = AdvancedPartyOrder.Invalid;
                     });
+                #endregion
             }
         }
 
@@ -360,12 +403,13 @@ namespace ChaseEmDown
         {
             Invalid,
             ChaseAlways,
-            ChaseWhileVisible
+            ChaseWhileVisible,
+            ReturnToArmy
         }
 
         public struct AdvancedPartyTargeter
         {
-            public MobileParty TargetParty;
+            public MobileParty? TargetParty;
             public AdvancedPartyOrder Order;
         }
 
@@ -392,12 +436,5 @@ namespace ChaseEmDown
                 base.AddStructDefinition(typeof(AdvancedPartyTargeter), 2, null);
             }
         }
-    }
-
-    public class ChaseEmDownSettings : AttributePerSaveSettings<ChaseEmDownSettings>
-    {
-        public override string Id => throw new NotImplementedException();
-
-        public override string DisplayName => throw new NotImplementedException();
     }
 }

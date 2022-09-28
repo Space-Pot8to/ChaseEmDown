@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<base xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" type="string">
+	<tags>
+		<tag language="English" />
+	</tags>
+	<strings>
+		<string id="GVppfCoKHi" text="Chase Em Down Configuration"/>
+		<string id="U3VavjmS86" text="No, really, you need to be in campaign for this to do anyting."/>
+		<string id="v2BGSMibjm" text="Resets the AI of ordered parties. Must be in a campaign."/>
+		<string id="QFUphXTfPi" text="I want you to attack and hold an enemy party until reinforcements can arrive."/>
+		<string id="RWVHqhyo69" text="Very well. Which party would you like me to attack?"/>
+		<string id="FDvkdXfW4Q" text="For how long should I chase the target?"/>
+		<string id="iDLpYYNuHz" text="Chase them until you are out of sight. If you haven't caught them yet, return."/>
+		<string id="AW3imsxKDO" text="Chase them to the ends of the earth."/>
+	</strings>
+</base>
