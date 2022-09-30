@@ -138,7 +138,6 @@ namespace ChaseEmDown
         {
             CampaignEvents.OnSessionLaunchedEvent.AddNonSerializedListener(this, new Action<CampaignGameStarter>(this.OnSessionLaunched));
             CampaignEvents.OnNewGameCreatedEvent.AddNonSerializedListener(this, new Action<CampaignGameStarter>(this.OnNewGameCreated));
-            CampaignEvents.OnPartyJoinedArmyEvent.AddNonSerializedListener(this, new Action<MobileParty>(this.OnPartyJoinArmyEvent));
             CampaignEvents.ArmyDispersed.AddNonSerializedListener(this, new Action<Army, Army.ArmyDispersionReason, bool>(this.OnArmyDispersed));
             CampaignEvents.HourlyTickPartyEvent.AddNonSerializedListener(this, new Action<MobileParty>(this.HourlyPartyTick));
             CampaignEvents.MobilePartyDestroyed.AddNonSerializedListener(this, new Action<MobileParty, PartyBase>(this.OnMobilePartyDestroyed));
@@ -172,7 +171,7 @@ namespace ChaseEmDown
                 return;
             }
 
-            // if it's the player's party, then reset tracked ai parties and
+            // if the player's party is destroyed, then reset tracked ai parties and
             // clear _advancedPartiesTargets
             if (mobileParty.IsMainParty)
             {
@@ -197,31 +196,18 @@ namespace ChaseEmDown
                 {
                     Order = AdvancedPartyOrder.ReturnToArmy,
                     TargetParty = MobileParty.MainParty
-                }); ;
+                });
             }
         }
 
         private void OnPartyAttachedAnotherParty(MobileParty mobileParty)
         {
-            // when an advanced party re-attaches to the army, their ai is reset and they are no
-            // longer tracked
+            // when an advanced party re-attaches to the army (no re-joins), their ai is reset and
+            // they are removed from the dictionary
             if (_advancedPartiesTargets.ContainsKey(mobileParty))
             {
                 mobileParty.Ai.EnableAi();
                 _advancedPartiesTargets.Remove(mobileParty);
-            }
-        }
-
-        private void OnPartyJoinArmyEvent(MobileParty mobileParty)
-        {
-            // when party "joins" the player's army, set them to go immediately to the army
-            if (_advancedPartiesTargets.ContainsKey(mobileParty))
-            {
-                //SetNewOrder(mobileParty, new AdvancedPartyTargeter()
-                //{
-                //    Order = AdvancedPartyOrder.ReturnToArmy,
-                //    TargetParty = MobileParty.MainParty
-                //});
             }
         }
 
@@ -282,14 +268,14 @@ namespace ChaseEmDown
                 {
                     LeaveSettlementAction.ApplyForParty(mobileParty);
                 }
-                else if (targetAndOrder.Order == AdvancedPartyOrder.ReturnToArmy
-                        && targetAndOrder.TargetParty.CurrentSettlement != null)
-                {
-
-                }
             }
         }
 
+        /// <summary>
+        /// Sets a new order for an advanced party.
+        /// </summary>
+        /// <param name="party"></param>
+        /// <param name="targeter"></param>
         public void SetNewOrder(MobileParty party, AdvancedPartyTargeter targeter)
         {
             if (targeter.Order == AdvancedPartyOrder.ChaseWhileVisible
@@ -319,21 +305,39 @@ namespace ChaseEmDown
                 _reorderParties = new List<MobileParty>();
             }
 
-
+            /// <summary>
+            /// This dialog is for sending a new army party member to chase down an enemy lord 
+            /// party. The player can specify whether the party should chase the enemy forever, 
+            /// or just until the party is out of sight.
+            /// </summary>
+            #region Send Advanced Party Dialog
             private CampaignGameStarter _starter;
             private List<MobileParty> _nearbyParties;
             private MobileParty? _targetParty;
             private AdvancedPartyOrder _order;
             public void InitializeSendAdvancedPartyDialog()
             {
-                #region Send Advanced Party Dialog
                 _starter.AddPlayerLine(
                 "player_army_orders",
                 "hero_main_options",
                 "lord_army_task_response",
                 "{=5n2zCokEK8}As general of this army I have a new task for you.",
                 new ConversationSentence.OnConditionDelegate(player_army_orders_condition),
-                null);
+                null, 200,
+                delegate (out TextObject explanation)
+                {
+                    Hero talkTo = Hero.OneToOneConversationHero;
+                    // if player sends out the last party, the army will disband, so disallow this
+                    bool lastPartyInArmy = talkTo.PartyBelongedTo.Army.LeaderPartyAndAttachedParties.Count() < 3;
+                    if (lastPartyInArmy)
+                    {
+                        explanation = new TextObject("{=XBMCcppr1o}If this party is sent out the army will disband!");
+                        return false;
+                    }
+
+                    explanation = TextObject.Empty;
+                    return true;
+                });
 
                 bool player_army_orders_condition()
                 {
@@ -407,9 +411,7 @@ namespace ChaseEmDown
 
                     // there are nearby enemy lord parties
                     bool noTargets = _nearbyParties.Count == 0;
-
-                    // if player sends out the last party, the army will disband
-                    bool lastPartyInArmy = talkTo.PartyBelongedTo.Army.LeaderPartyAndAttachedParties.Count() < 3;
+                    
                     if (alreadyAssigned)
                     {
                         explanation = new TextObject("{=TXxrkZkg4Z}This party already has an assignment.");
@@ -419,12 +421,6 @@ namespace ChaseEmDown
                     {
                         explanation = new TextObject("{=hzjqdBmApt}There are no enemy lord parties in the area.");
                         return false;
-                    }
-                    if (lastPartyInArmy)
-                    {
-                        explanation = new TextObject("{=XBMCcppr1o}If this party is sent out the army will disband!");
-                        return false;
-
                     }
                     explanation = TextObject.Empty;
                     return true;
@@ -544,32 +540,48 @@ namespace ChaseEmDown
                         _targetParty = null;
                         _order = AdvancedPartyOrder.Invalid;
                     });
-                #endregion
             }
+            #endregion
 
+            /// <summary>
+            /// This dialog is for recalling one or all parties from chasing down their target. 
+            /// This can also be done in the mod options menu, but the dialog is a more diegetic.
+            /// </summary>
+            #region Recall Party Dialog
             private List<MobileParty> _reorderParties;
             private AdvancedPartyOrder _newOrder;
             private MobileParty _newTargetParty;
             public void InitializeReorderAdvancedPartiesDialog()
-            {
-                #region Recall Party Dialog
+            {   
                 _starter.AddPlayerLine(
                 "player_advanced_parties_companion_start",
                 "hero_main_options",
                 "companion_reorder_parties_response",
                 "{=BU5St3BCBD}I have new orders for the parties I have dispatched.",
                 new ConversationSentence.OnConditionDelegate(player_advanced_parties_companion_start_condition),
-                null);
+                null, 200,
+                delegate (out TextObject explanation)
+                {
+                    // disable click if the 
+                    if(SendAdvancedPartyCampaignBehavior.Instance.AdvancedPartiesTargets.Count() == 0)
+                    {
+                        explanation = new TextObject("{=r5AH0Bpzed}There are no parties out right now.");
+                        return false;
+                    }
+                    explanation = TextObject.Empty;
+                    return true;
+                });
 
                 bool player_advanced_parties_companion_start_condition()
                 {
                     Hero talkTo = Hero.OneToOneConversationHero;
-                    return MobileParty.MainParty != null
-                        && talkTo.IsPlayerCompanion
-                        && talkTo.PartyBelongedTo == MobileParty.MainParty
-                        && MobileParty.MainParty.Army != null
-                        && MobileParty.MainParty.Army.LeaderParty == MobileParty.MainParty
-                        && SendAdvancedPartyCampaignBehavior.Instance.AdvancedPartiesTargets.Count() > 0;
+                    return (talkTo.IsLord || talkTo.IsPlayerCompanion) // talkTo is either a lord or player companion
+                        && MobileParty.MainParty != null // player party exists
+                        && MobileParty.MainParty.Army != null // player party army exists
+                        && MobileParty.MainParty.Army.LeaderParty == MobileParty.MainParty // player is leader of the army
+                        && talkTo.PartyBelongedTo != null // talkTo is in a party
+                        && MobileParty.MainParty.Army.LeaderPartyAndAttachedParties.Contains(talkTo.PartyBelongedTo) // talkTo's party is in the army
+                        && !talkTo.IsPrisoner; // talkTo is not a prisoner
                 }
 
                 _starter.AddDialogLine(
@@ -624,6 +636,13 @@ namespace ChaseEmDown
                         (SendAdvancedPartyCampaignBehavior.Instance.AdvancedPartiesTargets.Keys.ToList(), 5);
                     });
 
+                _starter.AddPlayerLine(
+                    "player_reorder_parties_cancel",
+                    "player_reorder_one_or_all_parties",
+                    "lord_pretalk",
+                    "{=D33fIGQe}Never mind.",
+                    null, null);
+
                 _starter.AddDialogLine(
                     "companion_ask_which_single_party",
                     "companion_ask_which_single_party",
@@ -635,7 +654,7 @@ namespace ChaseEmDown
                     "player_select_party_to_reorder",
                     "player_select_party_to_reorder",
                     "companion_ask_which_order",
-                    "I want to give a new order to {=!}{ADVANCED_PARTY}.",
+                    "{=egHCPrI9fP}I want to give a new order to {=!}{ADVANCED_PARTY}.",
                     "{=FR1XE0ZqGZ}I am thinking of a different party.",
                     "companion_ask_which_single_party",
                     delegate ()
@@ -648,6 +667,13 @@ namespace ChaseEmDown
                     {
                         _reorderParties = new List<MobileParty>() { ConversationSentence.SelectedRepeatObject as MobileParty };
                     });
+
+                _starter.AddPlayerLine(
+                    "player_select_party_to_reorder_cancel",
+                    "player_select_party_to_reorder",
+                    "lord_pretalk",
+                    "{=D33fIGQe}Never mind.",
+                    null, null);
 
                 _starter.AddDialogLine(
                     "companion_ask_which_order",
@@ -675,6 +701,13 @@ namespace ChaseEmDown
                         _newTargetParty = MobileParty.MainParty;
                     });
 
+                _starter.AddPlayerLine(
+                    "player_select_new_order_cancel",
+                    "player_select_new_order",
+                    "lord_pretalk",
+                    "{=D33fIGQe}Never mind.",
+                    null, null);
+
                 _starter.AddDialogLine(
                     "companion_send_out_new_orders",
                     "companion_send_out_new_orders",
@@ -694,8 +727,8 @@ namespace ChaseEmDown
                         }
                     }
                     );
-                #endregion
             }
+            #endregion
 
             public void Initialize()
             {

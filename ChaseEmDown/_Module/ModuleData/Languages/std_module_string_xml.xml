@@ -28,6 +28,7 @@
 		<string id="BcgseTiOd9" text="And what is the new order?"/>
 		<string id="Cy4CfytqnS" text="Tell {SELECTED_PARTIES_TEXT} to return to the army immediately."/>
 		<string id="vcmYai61Wa" text="I shall send these new orders immediately."/>
-		<string id="egHCPrI9fP" text="TODO."/>
+		<string id="egHCPrI9fP" text="I want to give a new order to {=!}{ADVANCED_PARTY}."/>
+		<string id="r5AH0Bpzed" text="There are no parties out right now."/>
 	</strings>
 </base>
