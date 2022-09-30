@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<base xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" type="string">
+	<tags>
+		<tag language="English" />
+	</tags>
+	<strings>
+		<string id="GVppfCoKHi" text="Chase Em Down Configuration"/>
+		<string id="U3VavjmS86" text="No, really, you need to be in campaign for this to do anyting."/>
+		<string id="v2BGSMibjm" text="Reset the AI of ordered parties. Must be in a campaign."/>
+		<string id="QFUphXTfPi" text="I want you to attack and hold down an enemy party until reinforcements can arrive."/>
+		<string id="RWVHqhyo69" text="Very well. Which party would you like me to attack?"/>
+		<string id="FDvkdXfW4Q" text="For how long should I chase the target?"/>
+		<string id="iDLpYYNuHz" text="Chase them until you are out of sight. If you haven't caught them yet, return."/>
+		<string id="AW3imsxKDO" text="Chase them to the ends of the earth."/>
+		<string id="5n2zCokEK8" text="As general of this army I have a new task for you."/>
+		<string id="WAiHYoYk79" text="I want you to attack {=!}{TARGET_PARTY}"/>
+		<string id="FR1XE0ZqGZ" text="I am thinking of a different party."/>
+		<string id="k87hqeEpVy" text="Yes general. What would you have me do?"/>
+		<string id="hzjqdBmApt" text="There are no enemy lord parties in the area."/>
+		<string id="TXxrkZkg4Z" text="This party already has an assignment."/>
+		<string id="XBMCcppr1o" text="If this party is sent out the army will disband!"/>
+		<string id="BU5St3BCBD" text="I have new orders for the parties I have dispatched."/>
+		<string id="0ayP9BwAYA" text="An order to all dispatched parties or just one?"/>
+		<string id="iWNQ05qzKy" text="{ADVANCED_PARTY} is the only party we have out. What is the new order?"/>
+		<string id="Wg5hQsdFD7" text="I want to send a new order to all the dispatched parties."/>
+		<string id="vx6bgALWUe" text="I want to send a new order to a single party."/>
+		<string id="m86uT9Vsd2" text="Which party would you like to give new orders?"/>
+		<string id="BcgseTiOd9" text="And what is the new order?"/>
+		<string id="Cy4CfytqnS" text="Tell {SELECTED_PARTIES_TEXT} to return to the army immediately."/>
+		<string id="vcmYai61Wa" text="I shall send these new orders immediately."/>
+		<string id="egHCPrI9fP" text="TODO."/>
+	</strings>
+</base>
