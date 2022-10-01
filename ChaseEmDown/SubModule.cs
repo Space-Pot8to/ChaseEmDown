@@ -43,19 +43,19 @@ namespace ChaseEmDown
             base.OnSubModuleUnloaded();
 
         }
-
-        private Action OnButtonClicked;
+        private Action ResetPartiesButton { get; set; } = delegate () { };
+        private bool AvoidCrashDoesNothing { get; set; } = true;
         protected override void OnBeforeInitialModuleScreenSetAsRoot()
         {
             base.OnBeforeInitialModuleScreenSetAsRoot();
 
             #region MCM Settings
-            ISettingsBuilder builder = BaseSettingsBuilder
+            ISettingsBuilder settingsBuilder = BaseSettingsBuilder
                 .Create("ChaseEmDown", new TextObject("{=GVppfCoKHi}Chase Em Down Configuration").ToString())
                 .SetFormat("xml")
                 .SetFolderName("ChaseEmDown")
                 .SetSubFolder("ChaseEmDown");
-            OnButtonClicked = delegate ()
+            ResetPartiesButton = delegate ()
             {
                 if (Campaign.Current != null)
                 {
@@ -66,25 +66,41 @@ namespace ChaseEmDown
                     InformationManager.DisplayMessage(new InformationMessage(new TextObject("{=U3VavjmS86}No, really, you need to be in campaign for this to do anyting.").ToString(), new Color(134, 114, 250)));
                 }
             };
-            builder.CreateGroup("ChaseEmDown Settings",
+            settingsBuilder.CreateGroup(new TextObject("{=23Bylwmnob}ChaseEmDown Settings").ToString(),
                 delegate (ISettingsPropertyGroupBuilder groupBuilder)
                 {
-                    Func<Action> func = () => OnButtonClicked;
-                    Action<Action> action = delegate(Action x) { OnButtonClicked(); };
-
+                    Func<Action> func = () => ResetPartiesButton;
+                    Action<Action> action = delegate(Action x) { ResetPartiesButton(); };
                     IRef ref1 = new ProxyRef<Action>(func, action);
 
                     groupBuilder.AddButton(
-                        "reset_advanced_parties",
-                        "Reset Advanced Parties",
-                        ref1, "Reset Advanced Parties",
+                        "ResetPartiesButton",
+                        new TextObject("{=ApJERVtREW}Reset Advanced Parties").ToString(),
+                        ref1, new TextObject("{=ApJERVtREW}Reset Advanced Parties").ToString(),
                         delegate (ISettingsPropertyButtonBuilder buttonBuilder)
                         {
-                            buttonBuilder.SetHintText("{=v2BGSMibjm}Reset the AI of ordered parties. Must be in a campaign.");
+                            buttonBuilder
+                            .SetHintText(new TextObject("{=v2BGSMibjm}Reset the AI of ordered parties. Must be in a campaign.").ToString())
+                            .SetRequireRestart(true);
+                        });
+
+                    Func<bool> func2 = () => AvoidCrashDoesNothing;
+                    Action<bool> action2 = delegate (bool x) { AvoidCrashDoesNothing = x; };
+                    IRef ref2 = new ProxyRef<bool>(func2, action2);
+
+                    groupBuilder.AddBool(
+                        "AvoidCrashDoesNothing",
+                        new TextObject("{=aP5YVOl7XV}Avoids Crash Does Nothing").ToString(),
+                        ref2,
+                        delegate (ISettingsPropertyBoolBuilder boolBuilder)
+                        {
+                            boolBuilder
+                            .SetHintText(new TextObject("{=uTlQv041DB}This is just here to make sure MCM doesn't crash, it does nothing.").ToString())
+                            .SetRequireRestart(true);
                         });
                 }
             );
-            _globalSettings = builder.BuildAsGlobal();
+            _globalSettings = settingsBuilder.BuildAsGlobal();
             _globalSettings.Register();
             #endregion
         }
@@ -666,7 +682,36 @@ namespace ChaseEmDown
                     delegate ()
                     {
                         _reorderParties = new List<MobileParty>() { ConversationSentence.SelectedRepeatObject as MobileParty };
+                    }, 100,
+                    delegate (out TextObject explanation)
+                    {
+                        MobileParty mobileParty = ConversationSentence.CurrentProcessedRepeatObject as MobileParty;
+                        explanation = explanation = TextObject.Empty;
+                        GetAdvancedPartyHoverText(mobileParty, out explanation);
+                        return true;
                     });
+
+                void GetAdvancedPartyHoverText(MobileParty mobileParty, out TextObject explanation)
+                {
+                    AdvancedPartyTargeter targeter = SendAdvancedPartyCampaignBehavior.Instance.AdvancedPartiesTargets[mobileParty];
+                    switch (targeter.Order)
+                    {
+                        case AdvancedPartyOrder.ReturnToArmy:
+                            explanation = new TextObject("{=3EMhi4DJHD}Currently returning to the army.");
+                            break;
+                        case AdvancedPartyOrder.ChaseAlways:
+                            explanation = new TextObject("{=xhgdBh17XH}Curently chasing {TARGET_PARTY} to the ends of the earth.");
+                            explanation.SetTextVariable("TARGET_PARTY", targeter.TargetParty.Name);
+                            break;
+                        case AdvancedPartyOrder.ChaseWhileVisible:
+                            explanation = new TextObject("{=hY8fLCLY1E}Curently chasing {TARGET_PARTY} while in sight.");
+                            explanation.SetTextVariable("TARGET_PARTY", targeter.TargetParty.Name);
+                            break;
+                        default:
+                            explanation = new TextObject("***ERROR in GetAdvancedPartyHoverText***");
+                            break;
+                    }
+                }
 
                 _starter.AddPlayerLine(
                     "player_select_party_to_reorder_cancel",
@@ -699,6 +744,16 @@ namespace ChaseEmDown
                     {
                         _newOrder = AdvancedPartyOrder.ReturnToArmy;
                         _newTargetParty = MobileParty.MainParty;
+                    }, 100,
+                    delegate (out TextObject explanation)
+                    {
+                        explanation = TextObject.Empty;
+                        if (_reorderParties.Count == 1)
+                        {
+                            MobileParty mobileParty = _reorderParties[0];
+                            GetAdvancedPartyHoverText(mobileParty, out explanation);
+                        }
+                        return true;
                     });
 
                 _starter.AddPlayerLine(

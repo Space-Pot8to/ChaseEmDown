@@ -30,5 +30,12 @@
 		<string id="vcmYai61Wa" text="I shall send these new orders immediately."/>
 		<string id="egHCPrI9fP" text="I want to give a new order to {=!}{ADVANCED_PARTY}."/>
 		<string id="r5AH0Bpzed" text="There are no parties out right now."/>
+		<string id="3EMhi4DJHD" text="Currently returning to the army."/>
+		<string id="xhgdBh17XH" text="Curently chasing {TARGET_PARTY} to the ends of the earth."/>
+		<string id="hY8fLCLY1E" text="Curently chasing {TARGET_PARTY} while in sight."/>
+		<string id="uTlQv041DB" text="This is just here to make sure MCM doesn't crash, it does nothing."/>
+		<string id="ApJERVtREW" text="Reset Advanced Parties"/>
+		<string id="aP5YVOl7XV" text="Avoids Crash Does Nothing"/>
+		<string id="23Bylwmnob" text="ChaseEmDown Settings"/>
 	</strings>
 </base>
