@@ -10,7 +10,7 @@
 		<string id="QFUphXTfPi" text="I want you to attack and hold down an enemy party until reinforcements can arrive."/>
 		<string id="RWVHqhyo69" text="Very well. Which party would you like me to attack?"/>
 		<string id="FDvkdXfW4Q" text="For how long should I chase the target?"/>
-		<string id="iDLpYYNuHz" text="Chase them until you are out of sight. If you haven't caught them yet, return."/>
+		<string id="iDLpYYNuHz" text="Chase them until you are out of sight. If you haven't caught them by then, return."/>
 		<string id="AW3imsxKDO" text="Chase them to the ends of the earth."/>
 		<string id="5n2zCokEK8" text="As general of this army I have a new task for you."/>
 		<string id="WAiHYoYk79" text="I want you to attack {=!}{TARGET_PARTY}"/>
@@ -31,11 +31,23 @@
 		<string id="egHCPrI9fP" text="I want to give a new order to {=!}{ADVANCED_PARTY}."/>
 		<string id="r5AH0Bpzed" text="There are no parties out right now."/>
 		<string id="3EMhi4DJHD" text="Currently returning to the army."/>
-		<string id="xhgdBh17XH" text="Curently chasing {TARGET_PARTY} to the ends of the earth."/>
-		<string id="hY8fLCLY1E" text="Curently chasing {TARGET_PARTY} while in sight."/>
+		<string id="xhgdBh17XH" text="Currently chasing {TARGET_PARTY} to the ends of the earth."/>
+		<string id="hY8fLCLY1E" text="Currently chasing {TARGET_PARTY} while in sight."/>
 		<string id="uTlQv041DB" text="This is just here to make sure MCM doesn't crash, it does nothing."/>
 		<string id="ApJERVtREW" text="Reset Advanced Parties"/>
 		<string id="aP5YVOl7XV" text="Avoids Crash Does Nothing"/>
 		<string id="23Bylwmnob" text="ChaseEmDown Settings"/>
+		<string id="kydSZGhLgt" text="Tell {SELECTED_PARTIES_TEXT} to attack a new party."/>
+		<string id="yeHERxwgaE" text="all the advanced parties"/>
+		<string id="jsI9InJEuY" text="Which party should {SELECTED_PARTIES_TEXT} attack?"/>
+		<string id="las7dgZjpL" text="I want {SELECTED_PARTIES_TEXT} to attack {=!}{TARGET_PARTY}."/>
+		<string id="6DuwsVceki" text="And for how long should {SELECTED_PARTIES_TEXT} chase {TARGET_PARTY}?"/>
+		<string id="iLg2YiqwXN" text="Tell them to give chase until they are out of sight. Tell them that if they haven't caught {TARGET_PARTY} at that point, then they should return."/>
+		<string id="dOEfSBVb0X" text="Tell them to chase {TARGET_PARTY} to the ends of the earth."/>
+		<string id="Om0bjJ8kbs" text="TODO"/>
+		<string id="fFVehVzi7D" text="TODO"/>
+		<string id="qP6ZDCvj5b" text="TODO"/>
+		<string id="p9MAG816IE" text="TODO"/>
+		<string id="Us7KXCoyTW" text="TODO"/>
 	</strings>
 </base>
