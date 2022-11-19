@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Reflection;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -10,14 +9,18 @@ using TaleWorlds.Core;
 using TaleWorlds.Localization;
 using TaleWorlds.MountAndBlade;
 using TaleWorlds.Library;
+using TaleWorlds.CampaignSystem.Actions;
 
 using MCM.Abstractions.FluentBuilder;
 using MCM.Abstractions.FluentBuilder.Models;
+using MCM.Abstractions.Base.Global;
+using MCM.Common;
+#if E181_OR_LOWER
 using MCM.Abstractions.Settings.Base.Global;
 using MCM.Abstractions.Ref;
+#endif
 
 using HarmonyLib;
-using TaleWorlds.CampaignSystem.Actions;
 
 namespace ChaseEmDown
 {   
@@ -352,7 +355,7 @@ namespace ChaseEmDown
             /// party. The player can specify whether the party should chase the enemy forever, 
             /// or just until the party is out of sight.
             /// </summary>
-            #region Send Advanced Party Dialog
+#region Send Advanced Party Dialog
             public void InitializeSendAdvancedPartyDialog()
             {
                 _starter.AddPlayerLine(
@@ -567,12 +570,12 @@ namespace ChaseEmDown
                         SendAdvancedPartyCampaignBehavior.Instance.SetNewOrder(advancedParty, targeter);
                     });
             }
-            #endregion
+#endregion
 
             /// <summary>
             /// This dialog is for giver a new order to a detached party. 
             /// </summary>
-            #region New Orders Dialog
+#region New Orders Dialog
             private List<MobileParty> _reorderParties;
             public void InitializeReorderAdvancedPartiesDialog()
             {   
@@ -609,7 +612,7 @@ namespace ChaseEmDown
                         && !talkTo.IsPrisoner; // talkTo is not a prisoner
                 }
 
-                #region Select New Order Party or Parties
+#region Select New Order Party or Parties
                 _starter.AddDialogLine(
                     "army_member_reorder_parties_response_multiple_out",
                     "army_member_reorder_parties_response",
@@ -729,9 +732,9 @@ namespace ChaseEmDown
                     "lord_pretalk",
                     "{=D33fIGQe}Never mind.",
                     null, null);
-                #endregion
+#endregion
 
-                #region Select New Order
+#region Select New Order
                 _starter.AddDialogLine(
                     "army_member_ask_which_order",
                     "army_member_ask_which_order",
@@ -805,9 +808,9 @@ namespace ChaseEmDown
                     "lord_pretalk",
                     "{=D33fIGQe}Never mind.",
                     null, null);
-                #endregion
+#endregion
 
-                #region Select New Target
+#region Select New Target
                 _starter.AddDialogLine(
                     "army_member_ask_for_new_target",
                     "army_member_ask_for_new_target",
@@ -856,9 +859,9 @@ namespace ChaseEmDown
                     "player_select_new_target",
                     "lord_pretalk",
                     "{=D33fIGQe}Never mind.", null, null);
-                #endregion
+#endregion
 
-                #region Select New Chase Down Condition
+#region Select New Chase Down Condition
                 _starter.AddDialogLine(
                     "army_member_ask_chase_down_how_far",
                     "army_member_ask_chase_down_how_far",
@@ -901,7 +904,7 @@ namespace ChaseEmDown
                     "player_set_new_lord_chase_option",
                     "lord_pretalk",
                     "{=D33fIGQe}Never mind.", null, null);
-                #endregion
+#endregion
 
                 _starter.AddDialogLine(
                     "army_member_send_out_new_orders",
@@ -923,7 +926,7 @@ namespace ChaseEmDown
                     }
                     );
             }
-            #endregion
+#endregion
 
             public void Initialize()
             {
