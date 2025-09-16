@@ -15,6 +15,7 @@ using MCM.Abstractions.FluentBuilder;
 using MCM.Abstractions.FluentBuilder.Models;
 using MCM.Abstractions.Base.Global;
 using MCM.Common;
+using TaleWorlds.SaveSystem;
 #if E181_OR_LOWER
 using MCM.Abstractions.Settings.Base.Global;
 using MCM.Abstractions.Ref;
@@ -146,7 +147,7 @@ namespace ChaseEmDown
                 party.Ai.EnableAi();
                 if (MobileParty.MainParty != null && MobileParty.MainParty.Army != null)
                 {
-                    party.SetMoveEscortParty(MobileParty.MainParty);
+                    party.Ai.SetMoveEscortParty(MobileParty.MainParty);
                     party.Army = MobileParty.MainParty.Army;
                 }
             }
@@ -287,6 +288,17 @@ namespace ChaseEmDown
                 {
                     LeaveSettlementAction.ApplyForParty(mobileParty);
                 }
+
+                // if for any reason the target party becomes null or the order is invalid,
+                // return to army
+                if(targetAndOrder.Order == AdvancedPartyOrder.Invalid || targetAndOrder.TargetParty == null)
+                {
+                    SetNewOrder(mobileParty, new AdvancedPartyTargeter()
+                    {
+                        Order = AdvancedPartyOrder.ReturnToArmy,
+                        TargetParty = MobileParty.MainParty
+                    });
+                }
             }
         }
 
@@ -302,14 +314,16 @@ namespace ChaseEmDown
             {
                 party.Army = null;
                 party.Ai.DisableAi();
-                party.SetMoveEngageParty(targeter.TargetParty);
+                party.Ai.SetMoveEngageParty(targeter.TargetParty);
+                party.Ai.SetDoNotMakeNewDecisions(true);
                 _advancedPartiesTargets[party] = targeter;
             }
             else if (targeter.Order == AdvancedPartyOrder.ReturnToArmy)
             {
                 party.Army = targeter.TargetParty.Army;
                 party.Ai.EnableAi();
-                party.SetMoveEscortParty(targeter.TargetParty);
+                party.Ai.SetMoveEscortParty(targeter.TargetParty);
+                party.Ai.SetDoNotMakeNewDecisions(false);
                 party.Ai.RethinkAtNextHourlyTick = true;
                 _advancedPartiesTargets[party] = targeter;
             }
@@ -339,7 +353,7 @@ namespace ChaseEmDown
                           && (
                                 // either party is the leader of his army 
                                 // or party is not yet attached to his army
-                                (x.Army != null && (x.Army.LeaderParty == x || !x.Army.LeaderPartyAndAttachedParties.Contains(x)))
+                                (x.Army != null && (x.Army.LeaderParty == x || !x.Army.LeaderParty.AttachedParties.Contains(x)))
                                 || x.Army == null // or party is not in an army
                              )
                           && x.CurrentSettlement == null // party is not in settlement
@@ -369,7 +383,7 @@ namespace ChaseEmDown
                     {
                         Hero talkTo = Hero.OneToOneConversationHero;
                         // if player sends out the last party, the army will disband, so disallow this
-                        bool lastPartyInArmy = talkTo.PartyBelongedTo.Army.LeaderPartyAndAttachedParties.Count() < 3;
+                        bool lastPartyInArmy = talkTo.PartyBelongedTo.Army.LeaderParty.AttachedParties.Count() < 2;
                         if (lastPartyInArmy)
                         {
                             explanation = new TextObject("{=XBMCcppr1o}If this party is sent out the army will disband!");
@@ -393,7 +407,7 @@ namespace ChaseEmDown
                         && mainParty.Army.LeaderParty == mainParty // player is leader of that army
                         && talkTo.PartyBelongedTo != null // talkTo has a party
                         && talkTo.PartyBelongedTo.LeaderHero == talkTo // talkTo is the leader of that party
-                        && mainParty.Army.LeaderPartyAndAttachedParties.Contains(talkTo.PartyBelongedTo); // talkTo's party is in player's army
+                        && mainParty.Army.LeaderParty.AttachedParties.Contains(talkTo.PartyBelongedTo); // talkTo's party is in player's army
                 }
 
                 _starter.AddDialogLine(
@@ -608,7 +622,7 @@ namespace ChaseEmDown
                         && MobileParty.MainParty.Army != null // player party army exists
                         && MobileParty.MainParty.Army.LeaderParty == MobileParty.MainParty // player is leader of the army
                         && talkTo.PartyBelongedTo != null // talkTo is in a party
-                        && MobileParty.MainParty.Army.LeaderPartyAndAttachedParties.Contains(talkTo.PartyBelongedTo) // talkTo's party is in the army
+                        && MobileParty.MainParty.Army.LeaderParty.AttachedParties.Contains(talkTo.PartyBelongedTo) // talkTo's party is in the army
                         && !talkTo.IsPrisoner; // talkTo is not a prisoner
                 }
 
@@ -949,7 +963,7 @@ namespace ChaseEmDown
             public AdvancedPartyOrder Order;
         }
 
-        public class SendAdvancedPartyCampaignBehaviorTypeDefiner : CampaignBehaviorBase.SaveableCampaignBehaviorTypeDefiner
+        public class SendAdvancedPartyCampaignBehaviorTypeDefiner : SaveableTypeDefiner
         {
             public SendAdvancedPartyCampaignBehaviorTypeDefiner() : base(57501812)
             {
@@ -990,7 +1004,7 @@ namespace ChaseEmDown
         /// <param name="bestTargetPoint"></param>
         /// <returns></returns>
         [HarmonyPrefix]
-        [HarmonyPatch(typeof(MobileParty), "SetAiBehavior")]
+        [HarmonyPatch(typeof(MobilePartyAi), "SetAiBehavior")]
         public static bool MobileParty_SetAiBehavior_Patch(MobileParty __instance, ref AiBehavior newAiBehavior, ref PartyBase targetPartyFigure, ref Vec2 bestTargetPoint)
         {
             if (SendAdvancedPartyCampaignBehavior.Instance.AdvancedPartiesTargets.ContainsKey(__instance))
